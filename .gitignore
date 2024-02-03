@@ -1,7 +1,7 @@
 # ignore my binaries and some random shit
 AgentCode/bin/**
 AgentCode/obj/**
-__pycache__/**
+**/__pycache__
 .vs/**
 AgentCode/.vs/**
 SharpAgent.exe
