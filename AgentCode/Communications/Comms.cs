@@ -61,6 +61,7 @@ namespace HavocImplant.Communications
             byte[] data = (byte[])arrayList.ToArray(typeof(byte));
 
             request.Method = "POST";
+            request.UserAgent = agent.userAgent;
             request.ContentType = "application/x-www-form-urlencoded";
             request.ContentLength = data.Length;
             request.Timeout = agent.timeout;

